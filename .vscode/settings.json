@@ -1,0 +1,15 @@
+{
+    "idf.currentSetup": "C:\\esp\\v5.5\\esp-idf",
+    "idf.openOcdConfigs": [
+        "board/esp32s3-bridge.cfg"
+    ],
+    "idf.customExtraVars": {},
+    "clangd.path": "C:\\Espressif\\tools\\esp-clangd\\esp-21.1.3_20260408\\esp-clangd\\bin\\clangd.exe",
+    "clangd.arguments": [
+      "--background-index",
+      "--query-driver=**",
+      "--compile-commands-dir=d:\\openai-git\\build"
+    ],
+    "idf.port": "COM28",
+    "idf.flashType": "UART"
+}

@@ -4,7 +4,7 @@ file(GLOB CODES "${PEER_PROJECT_PATH}/src/*.c")
 idf_component_register(
   SRCS ${CODES}
   INCLUDE_DIRS "${PEER_PROJECT_PATH}/src"
-  REQUIRES mbedtls srtp json esp_netif
+  REQUIRES mbedtls srtp esp_netif cjson
 )
 
 # Disable KeepAlives

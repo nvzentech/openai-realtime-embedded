@@ -69,29 +69,38 @@ esp_err_t oai_http_event_handler(esp_http_client_event_t *evt) {
   return ESP_OK;
 }
 
-void oai_http_request(char *offer, char *answer) {
+bool oai_http_request(char *offer, char *answer) {
   esp_http_client_config_t config;
   memset(&config, 0, sizeof(esp_http_client_config_t));
 
   config.url = OPENAI_REALTIMEAPI;
   config.event_handler = oai_http_event_handler;
   config.user_data = answer;
+  config.timeout_ms = 30000;
 
   snprintf(answer, MAX_HTTP_OUTPUT_BUFFER, "Bearer %s", OPENAI_API_KEY);
 
   esp_http_client_handle_t client = esp_http_client_init(&config);
+  if (client == NULL) {
+    ESP_LOGE(LOG_TAG, "Failed to initialize HTTP client");
+    return false;
+  }
+
   esp_http_client_set_method(client, HTTP_METHOD_POST);
   esp_http_client_set_header(client, "Content-Type", "application/sdp");
   esp_http_client_set_header(client, "Authorization", answer);
+  answer[0] = '\0';
   esp_http_client_set_post_field(client, offer, strlen(offer));
 
   esp_err_t err = esp_http_client_perform(client);
   if (err != ESP_OK || esp_http_client_get_status_code(client) != 201) {
-    ESP_LOGE(LOG_TAG, "Error perform http request %s", esp_err_to_name(err));
-#ifndef LINUX_BUILD
-    esp_restart();
-#endif
+    ESP_LOGE(LOG_TAG, "HTTP request failed: %s, status=%d, response=%s",
+             esp_err_to_name(err), esp_http_client_get_status_code(client),
+             answer);
+    esp_http_client_cleanup(client);
+    return false;
   }
 
   esp_http_client_cleanup(client);
+  return true;
 }
