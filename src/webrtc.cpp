@@ -12,7 +12,7 @@
 #define TICK_INTERVAL 15
 #define GREETING                                                    \
   "{\"type\": \"response.create\", \"response\": {\"modalities\": " \
-  "[\"audio\", \"text\"], \"instructions\": \"Say 'How can I help?.'\"}}"
+  "[\"audio\", \"text\"], \"instructions\": \"Say 'How can I help?'\"}}"
 
 PeerConnection *peer_connection = NULL;
 
@@ -23,23 +23,21 @@ void oai_send_audio_task(void *user_data) {
 
   while (1) {
     oai_send_audio(peer_connection);
-    vTaskDelay(pdMS_TO_TICKS(TICK_INTERVAL));
+    vTaskDelay(pdMS_TO_TICKS(20));
   }
 }
 #endif
 
 static void oai_ondatachannel_onmessage_task(char *msg, size_t len,
                                              void *userdata, uint16_t sid) {
-#ifdef LOG_DATACHANNEL_MESSAGES
-  ESP_LOGI(LOG_TAG, "DataChannel Message: %s", msg);
-#endif
+  ESP_LOGI(LOG_TAG, "DataChannel Message: %.*s", (int)len, msg);
 }
 
 static void oai_ondatachannel_onopen_task(void *userdata) {
   if (peer_connection_create_datachannel(peer_connection, DATA_CHANNEL_RELIABLE,
                                          0, 0, (char *)"oai-events",
                                          (char *)"") != -1) {
-    ESP_LOGI(LOG_TAG, "DataChannel created");
+    ESP_LOGI(LOG_TAG, "DataChannel created, sending greeting: %s", GREETING);
     peer_connection_datachannel_send(peer_connection, (char *)GREETING,
                                      strlen(GREETING));
   } else {
@@ -57,7 +55,7 @@ static void oai_onconnectionstatechange_task(PeerConnectionState state,
 #ifndef LINUX_BUILD
     esp_restart();
 #endif
-  } else if (state == PEER_CONNECTION_CONNECTED) {
+  } else if (state == PEER_CONNECTION_COMPLETED) {
 #ifndef LINUX_BUILD
     StackType_t *stack_memory = (StackType_t *)heap_caps_malloc(
         20000 * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
@@ -68,10 +66,15 @@ static void oai_onconnectionstatechange_task(PeerConnectionState state,
 }
 
 static void oai_on_icecandidate_task(char *description, void *user_data) {
-  char local_buffer[MAX_HTTP_OUTPUT_BUFFER + 1] = {0};
+  char *local_buffer = (char *)calloc(1, MAX_HTTP_OUTPUT_BUFFER + 1);
+  if (!local_buffer) {
+    ESP_LOGE(LOG_TAG, "Failed to allocate memory for HTTP answer buffer");
+    return;
+  }
   if (oai_http_request(description, local_buffer)) {
     peer_connection_set_remote_description(peer_connection, local_buffer);
   }
+  free(local_buffer);
 }
 
 void oai_webrtc() {
@@ -82,6 +85,10 @@ void oai_webrtc() {
       .datachannel = DATA_CHANNEL_STRING,
       .onaudiotrack = [](uint8_t *data, size_t size, void *userdata) -> void {
 #ifndef LINUX_BUILD
+        static int audio_packets_rx = 0;
+        if (++audio_packets_rx % 50 == 1) {
+          ESP_LOGI(LOG_TAG, "Received incoming audio from OpenAI (pkt #%d, %d bytes)", audio_packets_rx, (int)size);
+        }
         oai_audio_decode(data, size);
 #endif
       },
@@ -109,6 +116,6 @@ void oai_webrtc() {
 
   while (1) {
     peer_connection_loop(peer_connection);
-    vTaskDelay(pdMS_TO_TICKS(TICK_INTERVAL));
+    vTaskDelay(pdMS_TO_TICKS(10));
   }
 }
