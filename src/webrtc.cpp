@@ -53,6 +53,7 @@ static void oai_onconnectionstatechange_task(PeerConnectionState state,
   if (state == PEER_CONNECTION_DISCONNECTED ||
       state == PEER_CONNECTION_CLOSED) {
 #ifndef LINUX_BUILD
+    oai_dump_audio_buffer();
     esp_restart();
 #endif
   } else if (state == PEER_CONNECTION_COMPLETED) {
@@ -85,10 +86,12 @@ void oai_webrtc() {
       .datachannel = DATA_CHANNEL_STRING,
       .onaudiotrack = [](uint8_t *data, size_t size, void *userdata) -> void {
 #ifndef LINUX_BUILD
-        static int audio_packets_rx = 0;
-        if (++audio_packets_rx % 50 == 1) {
-          ESP_LOGI(LOG_TAG, "Received incoming audio from OpenAI (pkt #%d, %d bytes)", audio_packets_rx, (int)size);
-        }
+        // static int audio_packets_rx = 0;
+        // ESP_LOGI(LOG_TAG,
+        //          "Received incoming audio from OpenAI (pkt #%d, %d bytes)",
+        //          ++audio_packets_rx, (int)size);
+        // ESP_LOG_BUFFER_HEX(LOG_TAG, data, size);
+        //}
         oai_audio_decode(data, size);
 #endif
       },
@@ -116,6 +119,7 @@ void oai_webrtc() {
 
   while (1) {
     peer_connection_loop(peer_connection);
+    oai_check_audio_timeout();
     vTaskDelay(pdMS_TO_TICKS(10));
   }
 }

@@ -9,5 +9,7 @@ void oai_init_audio_decoder(void);
 void oai_init_audio_encoder();
 void oai_send_audio(PeerConnection *peer_connection);
 void oai_audio_decode(uint8_t *data, size_t size);
+void oai_dump_audio_buffer(void);
+void oai_check_audio_timeout(void);
 void oai_webrtc();
 bool oai_http_request(char *offer, char *answer);
